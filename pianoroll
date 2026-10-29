@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+
+KEY_COLOR_FRONT_NATURAL=$'\e[48;5;255m'
+KEY_COLOR_FRONT_ACCIDENTAL=$'\e[48;5;253m'
+KEY_COLOR_NATURAL=$'\e[48;5;255m'
+KEY_COLOR_ACCIDENTAL=$'\e[48;5;237m'
+
+NATURAL_COLOR=$'\e[48;5;45m'
+ACCIDENTAL_COLOR=$'\e[48;5;36m'
+RST=$'\e[0m'
+
+SLEEP_TIME=0.033
+
+tick-task() {
+	while true; do
+		read -r -t "$SLEEP_TIME" -u 1
+		if (($? <= 128)); then
+			echo 'error'
+			return 1
+		fi
+
+		echo 'tick' || return 1
+	done
+}
+
+input-reader-task() {
+	local cmd data msg
+	while read -r cmd key; do
+		msg=
+		case "$cmd" in
+			on) msg="on $key";;
+			off) msg="off $key";;
+			*) ;;
+		esac
+
+		if [[ -n $msg ]]; then
+			echo "$msg" || return 1
+		fi
+	done
+
+	echo 'done'
+}
+
+# piano starts at 0=A0
+is-accidental() {
+	local key=$1
+
+	case "$((key % 12))" in
+		1) return 0;;  # A#/Bb
+		4) return 0;;  # C#/Db
+		6) return 0;;  # D#/Eb
+		9) return 0;;  # F#/Gb
+		11) return 0;; # G#/Ab
+		*) return 1;;
+	esac
+}
+
+update-display() {
+	printf '\e[%d;%dH' "$RENDER_ROW" "$COLUMNS"
+	printf '\n'
+
+	local key state column trail_color key_color key_color_front
+	for key in {0..87}; do
+		state=${KEYS[key]}
+		column=$((key + 1))
+
+		# get info needed
+		if [[ $state == 'on' && -n ${KEYS_ACCIDENTAL[key]} ]]; then
+			# on and accidental
+			trail_color=$ACCIDENTAL_COLOR
+			key_color=$ACCIDENTAL_COLOR
+			key_color_front=$NATURAL_COLOR
+		elif [[ $state == 'on' && -z ${KEYS_ACCIDENTAL[key]} ]]; then
+			# on and natural
+			trail_color=$NATURAL_COLOR
+			key_color=$NATURAL_COLOR
+			key_color_front=$NATURAL_COLOR
+		elif [[ -n ${KEYS_ACCIDENTAL[key]} ]]; then
+			# off and accidental
+			trail_color=
+			key_color=$KEY_COLOR_ACCIDENTAL
+			key_color_front=$KEY_COLOR_FRONT_ACCIDENTAL
+		else
+			# off and natural
+			trail_color=
+			key_color=$KEY_COLOR_NATURAL
+			key_color_front=$KEY_COLOR_FRONT_NATURAL
+		fi
+
+		# draw trail
+		printf '\e[%d;%dH' "$RENDER_ROW" "$column"
+		printf '%s' "$trail_color $RST"
+
+		# draw the piano key
+		printf '\e[%d;%dH' "$((RENDER_ROW + 1))" "$column"
+		printf '%s' "$key_color $RST"
+		printf '\e[%d;%dH' "$((RENDER_ROW + 2))" "$column"
+		printf '%s' "$key_color $RST"
+		printf '\e[%d;%dH' "$((RENDER_ROW + 3))" "$column"
+		printf '%s' "$key_color_front $RST"
+	done
+}
+
+update-key() {
+	local state=$1
+	local key=$2
+
+	KEYS[key]=$state
+}
+
+init-term() {
+	printf '\e[?25l' # hide the cursor
+	printf '\e[?1049h' # enter the alternate screen
+	printf '\e[%d;%dr' 1 "$RENDER_ROW" # set scrolling margins
+}
+
+deinit-term() {
+	printf '\e[%d;%dr' 0 0 # reset scrolling margins
+	printf '\e[?25h' # show the cursor
+	printf '\e[?1049l' # leave the alternate screen
+}
+
+my-cat() {
+	local line
+	while IFS= read -r line; do
+		printf '%s\n' "$line" || return 1
+	done
+}
+
+main() {
+	local read_end write_end
+
+	# create the pipe for communication using coproc
+	if ! coproc my-cat; then
+		echo "coproc not found - is your bash version new enough?" >&2
+		return 1
+	fi
+
+	read_end=${COPROC[0]}
+	exec {write_end}>&"${COPROC[1]}"
+
+	tick-task <&- >&"$write_end" &
+	input-reader-task <&0 >&"$write_end" &
+
+	exec {write_end}>&-
+	exec 0<&-
+
+	shopt -s checkwinsize
+	(:) # so checkwinsize works
+
+	COLUMNS=${COLUMNS:-80}
+	LINES=${LINES:-24}
+	local RENDER_ROW=$((LINES - 3))
+
+	trap deinit-term EXIT
+	init-term
+
+	# move cursor to bottom of screen
+	printf '\e[%d;%dH' "$RENDER_ROW" 1
+
+	# build a cache of data to keep it out of the hot path
+	local -a KEYS=()
+	local -a KEYS_ACCIDENTAL=()
+
+	local i
+	for i in {0..87}; do
+		if is-accidental "$i"; then
+			KEYS_ACCIDENTAL[i]=1
+		fi
+	done
+
+	local cmd data out
+	while read -u "$read_end" -r cmd data; do
+		case "$cmd" in
+			tick) out=$(update-display); printf '%s' "$out";;
+			on | off) update-key "$cmd" "$data";;
+			done) break;;
+			error)
+				echo 'error encountered' >&2
+				return 1
+				;;
+		esac
+	done
+
+	return 0
+}
+
+main "$@"
