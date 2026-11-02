@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# Don't actually parse anything - just emit on and off events to the screen to
+# simulate a piano
+#
+# # Created
+# Author: Dave Eddy <ysap@daveeddy.com>
+# Date: October 29, 2026
+# License: MIT
+#
+# # Contributors
+# - Dave Eddy <ysap@daveeddy.com>
+
+while true; do
+	key=$((SRANDOM % 88))
+
+	if (((SRANDOM % 2) == 0)); then
+		state='on'
+	else
+		state='off'
+	fi
+
+	echo "$state $key"
+	sleep .1
+done

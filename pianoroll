@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+#
+# Terminal Piano Visualizer written in Bash
+#
+# Built on YouTube: https://youtu.be/n5QgmIy7zFU
+#
+# # Created
+# Author: Dave Eddy <ysap@daveeddy.com>
+# Date: October 29, 2026
+# License: MIT
+#
+# # Contributors
+# - Dave Eddy <ysap@daveeddy.com>
 
 KEY_COLOR_FRONT_NATURAL=$'\e[48;5;255m'
 KEY_COLOR_FRONT_ACCIDENTAL=$'\e[48;5;253m'
