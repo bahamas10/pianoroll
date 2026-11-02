@@ -3,6 +3,8 @@ pianoroll
 
 Terminal Piano Visualizer written in Bash
 
+![Piano Roll Preview](https://files.daveeddy.com/ysap/pianoroll/pianoroll.gif)
+
 Usage
 -----
 
