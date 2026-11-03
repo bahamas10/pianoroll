@@ -42,6 +42,16 @@ alt="Bash Pianoroll Video"
 src="https://i.ytimg.com/vi/n5QgmIy7zFU/maxresdefault.jpg"
 /></a>
 
+Contributing
+------------
+
+Ensure that style checks pass before submitting a PR.
+
+```
+make check
+...
+```
+
 License
 -------
 
