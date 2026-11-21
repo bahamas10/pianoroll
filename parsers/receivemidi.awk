@@ -15,8 +15,8 @@
 # # Contributors
 # - Dave Eddy <ysap@daveeddy.com>
 
-# example input:  channel  1   note-on          120  73
-# example output: on 120
+# example input:  channel  1   note-on          90  73
+# example output: on 69
 $3 == "note-on" || $3 == "note-off" {
 	# 21 is where A0 starts in midi
 	key = $4 - 21
