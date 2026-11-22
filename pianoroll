@@ -81,7 +81,7 @@ update-display() {
 			# on and accidental
 			trail_color=$ACCIDENTAL_COLOR
 			key_color=$ACCIDENTAL_COLOR
-			key_color_front=$NATURAL_COLOR
+			key_color_front=$KEY_COLOR_FRONT_ACCIDENTAL
 		elif [[ $state == 'on' && -z ${KEYS_ACCIDENTAL[key]} ]]; then
 			# on and natural
 			trail_color=$NATURAL_COLOR
